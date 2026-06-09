@@ -43,17 +43,12 @@ jobs:
           set -euo pipefail
           mkdir -p release
           
-          # Копируем твои списки доменов в папку компилятора
-          # Ожидается, что твои исходники лежат в папке ./data/
-          if [ -d "./data" ]; then
-            cp -a ./data/. community/data/
-          fi
-          
           pushd community >/dev/null
-          go run ./ -outputdir=../release
+          # Флаг -datapath=../data заставляет компилятор игнорировать стандартные
+          # списки v2fly и собирать .dat файл ИСКЛЮЧИТЕЛЬНО из твоей папки data/
+          go run ./ -datapath=../data -outputdir=../release
           popd >/dev/null
           
-          # Компилятор создает dlc.dat, переименовываем его в geosite.dat
           mv release/dlc.dat release/geosite.dat
           sha256sum release/geosite.dat > release/geosite.dat.sha256sum
 
@@ -67,7 +62,8 @@ jobs:
           set -euo pipefail
           mkdir -p source release
           
-          # Генерируем конфигурационный файл config.json на лету
+          # Генерируем строгий конфиг, который отключает скачивание баз MaxMind
+          # и парсит только твои текстовые списки из папки source/
           cat << 'EOF' > config.json
           {
             "input": [
@@ -92,7 +88,6 @@ jobs:
           }
           EOF
           
-          # Запускаем компиляцию, указывая созданный конфиг
           geoip convert -c config.json
           sha256sum release/geoip.dat > release/geoip.dat.sha256sum
 
@@ -103,12 +98,10 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "noreply@github.com"
 
-          # Добавляем только сгенерированные файлы из папки release
           git add release/geosite.dat
           git add release/geosite.dat.sha256sum
           git add release/geoip.dat
           git add release/geoip.dat.sha256sum
 
-          # Если изменений нет, скрипт не упадет с ошибкой благодаря || echo
           git commit -m "Update Xray GeoFiles" || echo "No changes to commit"
           git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
