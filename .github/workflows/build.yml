@@ -67,11 +67,33 @@ jobs:
           set -euo pipefail
           mkdir -p source release
           
-          # Инструмент geoip convert по умолчанию ищет текстовые списки IP-адресов
-          # в папке ./source/ и сохраняет результат в ./release/geoip.dat.
-          # Если папка source пустая, скрипт соберет базовый пустой geoip файл.
+          # Генерируем конфигурационный файл config.json на лету
+          cat << 'EOF' > config.json
+          {
+            "input": [
+              {
+                "type": "text",
+                "action": "add",
+                "args": {
+                  "inputDir": "./source"
+                }
+              }
+            ],
+            "output": [
+              {
+                "type": "v2rayGeoIPDat",
+                "action": "output",
+                "args": {
+                  "outputDir": "./release",
+                  "outputName": "geoip.dat"
+                }
+              }
+            ]
+          }
+          EOF
           
-          geoip convert
+          # Запускаем компиляцию, указывая созданный конфиг
+          geoip convert -c config.json
           sha256sum release/geoip.dat > release/geoip.dat.sha256sum
 
       - name: Commit and push generated files
